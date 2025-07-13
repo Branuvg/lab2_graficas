@@ -66,24 +66,6 @@ fn draw_beacon(fb: &mut Framebuffer, x: i32, y: i32) {
     draw_block(fb, x + 2, y + 2);
 }
 
-fn draw_pulsar(fb: &mut Framebuffer, x: i32, y: i32) {
-    for i in 0..4 {
-        let (sin, cos) = (i as f32 * std::f32::consts::PI / 2.0).sin_cos();
-        let (sin, cos) = (sin.round() as i32, cos.round() as i32);
-        let transform = |px: i32, py: i32| -> (i32, i32) { (x + 6 + px * cos - py * sin, y + 6 + px * sin + py * cos) };
-        let points = [(0, 2), (0, 3), (0, 4), (5, 2), (5, 3), (5, 4), (2, 0), (3, 0), (4, 0), (2, 5), (3, 5), (4, 5)];
-        for (px, py) in points {
-            let (tx, ty) = transform(px, py); fb.set_pixel(tx, ty);
-            let (tx, ty) = transform(-px, py); fb.set_pixel(tx, ty);
-        }
-    }
-}
-
-fn draw_pentadecathlon(fb: &mut Framebuffer, x: i32, y: i32) {
-    let points = [(0, 1), (1, 1), (2, 0), (2, 2), (3, 1), (4, 1), (5, 1), (6, 1), (7, 0), (7, 2), (8, 1), (9, 1)];
-    for (px, py) in points { fb.set_pixel(x + px, y + py); }
-}
-
 // -- Spaceships --
 fn draw_glider(fb: &mut Framebuffer, x: i32, y: i32) {
     fb.set_pixel(x + 1, y + 0); fb.set_pixel(x + 2, y + 1);
@@ -124,48 +106,58 @@ fn draw_gosper_glider_gun(fb: &mut Framebuffer, x: i32, y: i32) {
     for (px, py) in gun_points { fb.set_pixel(x + px, y + py); }
 }
 
+fn draw_flipped_gosper_glider_gun(fb: &mut Framebuffer, x: i32, y: i32) {
+    let gun_points = [
+        (24, 0), (22, 1), (24, 1), (12, 2), (13, 2), (20, 2), (21, 2), (34, 2), (35, 2),
+        (11, 3), (15, 3), (20, 3), (21, 3), (34, 3), (35, 3), (0, 4), (1, 4), (10, 4),
+        (16, 4), (20, 4), (21, 4), (0, 5), (1, 5), (10, 5), (14, 5), (16, 5), (17, 5),
+        (22, 5), (24, 5), (10, 6), (16, 6), (24, 6), (11, 7), (15, 7), (12, 8), (13, 8)
+    ];
+    let max_x = 35; // The width of the pattern
+    for (px, py) in gun_points {
+        fb.set_pixel(x + (max_x - px), y + py);
+    }
+}
+
 
 /// Dibuja el patrón inicial en el tablero.
 fn setup_initial_pattern(fb: &mut Framebuffer) {
     fb.set_current_color(ALIVE_COLOR);
 
-    // --- Cañón de Gliders ---
-    // Un gran cañón en la esquina superior izquierda.
-    draw_gosper_glider_gun(fb, 2, 5);
+    // --- Cañones Enfrentados (Confronted Cannons) ---
+    draw_gosper_glider_gun(fb, 1, 1);
+    draw_flipped_gosper_glider_gun(fb, GAME_WIDTH - 38, 1);
 
-    // --- La Gran Flota (The Great Fleet) ---
-    // Una enorme cantidad de naves espaciales de varios tamaños moviéndose por la pantalla.
-    for i in 0..5 {
-        draw_lwss(fb, 5 + i * 18, 65);
-        draw_mwss(fb, 8 + i * 18, 55);
-        draw_hwss(fb, 11 + i * 18, 45);
-    }
+    // --- Flotas Masivas (Massive Fleets) ---
     for i in 0..10 {
-        draw_glider(fb, 2 + i * 8, 35);
+        if 5 + i * 10 < GAME_WIDTH - 10 {
+            draw_lwss(fb, 2 + i * 10, 50);
+            draw_mwss(fb, 4 + i * 10, 60);
+            draw_hwss(fb, 6 + i * 10, 40);
+        }
     }
 
-    // --- Campo de Osciladores ---
-    // Un área dedicada a patrones que parpadean y cambian.
-    draw_pulsar(fb, 65, 5);
-    draw_pulsar(fb, 65, 25);
+    // --- Llenado de Fondo con Patrones Variados (Background Fill) ---
+    for y in (0..GAME_HEIGHT).step_by(7) {
+        for x in (0..GAME_WIDTH).step_by(7) {
+            // Chequeo para no sobreescribir los patrones grandes
+            if fb.get_pixel_color(x, y).unwrap() != DEAD_COLOR {
+                continue;
+            }
 
-    for i in 0..6 {
-        draw_beacon(fb, 45 + i * 8, 5);
-        draw_toad(fb, 45 + i * 8, 15);
-    }
-    for i in 0..4 {
-        draw_pentadecathlon(fb, 40, 25 + i * 5);
-    }
+            let pattern_type = (x + y * 3) % 9;
 
-    // --- Lluvia de Blinkers ---
-    // Llenar los espacios vacíos restantes con el oscilador más simple.
-    for y in (0..GAME_HEIGHT).step_by(5) {
-        for x in (0..GAME_WIDTH).step_by(3) {
-            // Una forma simple de añadir aleatoriedad y llenar espacios.
-            if (x + y * 2) % 13 == 0 {
-                // Verificar que no dibujamos sobre algo importante (chequeo muy simple)
-                if fb.get_pixel_color(x, y).unwrap() == DEAD_COLOR {
-                    draw_blinker(fb, x, y);
+            if x < GAME_WIDTH - 8 && y < GAME_HEIGHT - 8 {
+                match pattern_type {
+                    0 => draw_block(fb, x, y),
+                    1 => draw_beehive(fb, x, y),
+                    2 => draw_blinker(fb, x + 2, y),
+                    3 => draw_boat(fb, x, y),
+                    4 => draw_tub(fb, x, y),
+                    5 => draw_loaf(fb, x, y),
+                    6 => draw_toad(fb, x, y),
+                    7 => draw_beacon(fb, x, y),
+                    _ => { /* Dejar algunos espacios vacíos para la dinámica */ }
                 }
             }
         }
@@ -205,7 +197,7 @@ fn run_game_of_life_step(fb: &mut Framebuffer) {
 fn main() {
     let (mut window, raylib_thread) = raylib::init()
         .size(WINDOW_WIDTH, WINDOW_HEIGHT)
-        .title("Game of Life de Conway - Ecosistema en Movimiento")
+        .title("Game of Life de Conway - Densidad Máxima")
         .build();
 
     let mut framebuffer = Framebuffer::new(GAME_WIDTH, GAME_HEIGHT, DEAD_COLOR);
