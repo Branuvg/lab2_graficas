@@ -4,8 +4,7 @@ Implementación del clásico autómata celular "El Juego de la Vida" de John Hor
 
 ## Características
 
-![Demo del proyecto](gol_gif_gb.gif)
-
+[Demo del proyecto](gol_gif_gb.gif)
 
 ### Patrones Incluidos
 - **Still Lifes** (formas estáticas):
